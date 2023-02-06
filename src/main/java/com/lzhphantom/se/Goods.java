@@ -1,4 +1,4 @@
-package sg.com.ncs.luozhihui.base;
+package com.lzhphantom.se;
 
 /**
  * @author luozhihui
