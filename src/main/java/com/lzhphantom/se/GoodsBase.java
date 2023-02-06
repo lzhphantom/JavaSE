@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * @author luozhihui
+ * @author lzhphantom
  * @date 2/6/2023
  */
 public class GoodsBase {

@@ -1,7 +1,7 @@
 package com.lzhphantom.se;
 
 /**
- * @author luozhihui
+ * @author lzhphantom
  * @date 2/6/2023
  */
 public class Goods {

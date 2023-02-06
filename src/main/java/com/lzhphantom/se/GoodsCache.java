@@ -6,7 +6,7 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * @author luozhihui
+ * @author lzhphantom
  * @date 2/6/2023
  */
 public class GoodsCache {
