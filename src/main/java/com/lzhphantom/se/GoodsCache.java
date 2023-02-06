@@ -1,4 +1,4 @@
-package sg.com.ncs.luozhihui.base;
+package com.lzhphantom.se;
 
 import java.lang.ref.SoftReference;
 import java.util.HashMap;
