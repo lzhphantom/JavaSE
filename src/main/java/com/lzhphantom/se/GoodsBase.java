@@ -1,4 +1,4 @@
-package sg.com.ncs.luozhihui.base;
+package com.lzhphantom.se;
 
 import java.util.HashMap;
 import java.util.Map;
