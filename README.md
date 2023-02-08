@@ -55,6 +55,92 @@ java 基础复习 为了面试
 2. 可以提高响应速度，任务到达时，如果有空闲线程可以直接执行，而不需要等待线程创建时间
 3. 提高线程的可管理性，线程是稀缺资源，如果对于线程的创建和销毁不加以管理，不仅会消耗系统资源，并且会降低系统的稳定性，使用线程池可以对线程进行统一的分配、调节和监控
 
+**ThreadPoolExecutor** 对象的7个参数
+
+- `int corePoolSize`: 线程池中常驻的核心线程数，当线程池线程数达到该值时，就会将任务放入队列
+- `int maximumPoolSize`: 线程池中能容纳的同时执行的最大线程数，必须大于等于1
+- `long keepAliveTime`: 多余空闲线程的存活时间，当前线程数大于`corePoolSize`且空闲时间达到该时间值时，多余线程会被销毁
+- `TimeUnit unit`: `keepAliveTime`的时间单位
+- `BlockingQueue<Runnable> workQueue`: 任务队列，保存提交但尚未执行的任务
+- `ThreadFactory threadFactory`: 线程池中创建 工作线程的工厂，一般使用默认工厂
+- `RejectedExecutionHandler handler`: 拒绝策略，当队列满时且工作线程等于最大线程数并的处理策略
+
+线程池的工作流程：
+
+1. 创建线程池后，等待任务提交
+2. 当调用`execute()`提交任务时，线程池做出如下判断：
+   - 如果正在运行的线程数小于corePoolSize,立刻创建线程
+   - 如果正在运行的线程数等于corePoolSize,将任务放入队列
+   - 如果队列已满并且运行的线程数小于maximumPoolSize,创建非核心线程数来执行任务
+   - 如果队列已满并且运行的线程数等于maximumPoolSize,按照饱和拒绝策略来拒绝新任务
+3. 当一个线程执行完成后，会从队列中取下一个任务来执行
+4. 当线程没有运行超过keepAliveTime时，线程池会判断：
+   1. 如果当前线程数大于corePoolSize,那么这个线程将会被销毁
+
+线程池的4中拒绝策略：
+
+1. `AbortPolicy`：直接抛出`RejectedExecutionException`异常，该策略为默认策略
+2. `CallerRunsPolicy`：”调用者运行策略“，该策略即不会抛弃任务，也不会抛出异常，而是将某些任务回退至调用者，从而降低新的任务流量
+3. `DiscardOldestPolicy`：抛弃队列中等待最久的任务，然后把当前任务加入队列中尝试再次尝试提交
+4. `DiscardPolicy`：直接丢弃任务，不予处理也不抛出异常。如果允许任务丢失，这是最好的一种方案
+
+以上拒绝策略均实现了`RejectedExecutionHandler`接口
+
+**如何配置线程池**
+
+1. CPU密集型
+
+   CPU密集型任务需要大量的运算，CPU长期保持高负载，阻塞时间较少
+
+   那么对于CPU密集型任务，需要通常配置较少的线程数量，一般核心线程数设置为CPU核心数，减少线程上下文的切换
+
+2. IO密集型
+
+   IO密集型任务需要大量的IO，也就意味着大量的阻塞，所以在单个线程上运行IO密集型任务会因为等待IO结束导致浪费大量的CPU运算能力
+
+   所以在IO密集型任务中使用多线程可以大大加速程序运行，可以配置较多的线程
+
+   参考公式为：核心线程数=CPU核心数/(1-阻塞系数)
+
+   阻塞系数：0.8~0.9
+
+   例如8核心的CPU，则设置核心线程数为8/(1-0.9)=80
+
+创建线程池的7种方式：
+
+1. Executors.newFixedThreadPool：创建⼀个固定⼤⼩的线程池，可控制并发的线程数，超出的线程会在队列中等待；
+   2. Executors.newCachedThreadPool：创建⼀个可缓存的线程池，若线程数超过处理所需，缓存⼀段时间后会回收，若线程数不够，则新建线程；
+3. Executors.newSingleThreadExecutor：创建单个线程数的线程池，它可以保证先进先出的执⾏顺序；
+4. Executors.newScheduledThreadPool：创建⼀个可以执⾏延迟任务的线程池；
+5. Executors.newSingleThreadScheduledExecutor：创建⼀个单线程的可以执⾏延迟任务的线程池；
+6. Executors.newWorkStealingPool：创建⼀个抢占式执⾏的线程池（任务执⾏顺序不确定）【JDK1.8 添加】。
+7. ThreadPoolExecutor：最原始的创建线程池的⽅式，它包含了 7 个参数可供设置，上面有讲
+
+#### ThreadLocal的理解
+
+1. 基本介绍想
+
+   ThreadLocal叫做***线程变量***，意思是ThreadLocal中**填充的变量**属于**当前线程**，该变量对其他线程而言是隔离的，也就是说该变量是当前线程独有的变量。ThreadLocal为变量在每个线程中都创建了一个副本，那么每个线程可以访问自己内部的副本变量。
+
+2. 常见使用场景
+
+   1. 每个线程需要自己单独的实例
+   2. 实例需要在多个方法中共享，但不希望被多线程共享
+
+- 场景一：存储用户Session
+- 场景二：数据库连接，处理数据库事务
+- 场景三：数据跨层传递（controller,service,dao）
+
+#### java守护线程
+
+1. 定义
+
+   与守护线程相对于的就是用户线程，用户线程可以理解为系统工作的线程，而守护线程守护的就是用户线程。当用户线程全部执行完毕，守护线程才会跟着结束。
+
+#### CountDownLatch 使用
+
+​	CountDownLatch是java中一个协调多线程的工具类，假如多线程在执行后，需要等待所有都执行完再执行下一步，那么就可以使用CountDownLatch。
+
 ### 4.java8新特性
 ### 5.java代码实例
 https://blog.csdn.net/guorui_java/article/details/120098618
