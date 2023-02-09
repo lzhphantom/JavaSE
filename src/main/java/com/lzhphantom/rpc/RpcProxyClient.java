@@ -1,10 +1,10 @@
-package sg.com.ncs.luozhihui.rpc;
+package com.lzhphantom.rpc;
 
 import java.lang.reflect.Proxy;
 import java.rmi.server.RemoteObjectInvocationHandler;
 
 /**
- * @author luozhihui
+ * @author lzhphantom
  * @date 2/9/2023
  */
 public class RpcProxyClient {
