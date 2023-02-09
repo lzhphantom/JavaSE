@@ -1,11 +1,11 @@
-package sg.com.ncs.luozhihui.rpc;
+package com.lzhphantom.rpc;
 
 import lombok.Data;
 
 import java.io.Serializable;
 
 /**
- * @author luozhihui
+ * @author lzhphantom
  * @date 2/9/2023
  */
 @Data
