@@ -1,4 +1,4 @@
-package sg.com.ncs.luozhihui.rpc;
+package com.lzhphantom.rpc;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -11,7 +11,7 @@ import java.lang.reflect.Method;
 import java.net.Socket;
 
 /**
- * @author luozhihui
+ * @author lzhphantom
  * @date 2/9/2023
  */
 @AllArgsConstructor
