@@ -1,4 +1,4 @@
-package sg.com.ncs.luozhihui.rpc;
+package com.lzhphantom.rpc;
 
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -7,7 +7,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * @author luozhihui
+ * @author lzhphantom
  * @date 2/9/2023
  */
 public class RpcProxyServer {
