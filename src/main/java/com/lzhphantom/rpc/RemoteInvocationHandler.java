@@ -1,4 +1,4 @@
-package sg.com.ncs.luozhihui.rpc;
+package com.lzhphantom.rpc;
 
 import lombok.AllArgsConstructor;
 
@@ -6,7 +6,7 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 
 /**
- * @author luozhihui
+ * @author lzhphantom
  * @date 2/9/2023
  */
 @AllArgsConstructor
