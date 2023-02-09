@@ -7,7 +7,7 @@ package com.lzhphantom.se;
 public class InnerClass {
     public int num;
     // 成员内部类
-    private class Inner {
+    private static class Inner {
         public int name;
     }
 
@@ -32,6 +32,6 @@ public class InnerClass {
             }
         };
         InnerClass in = new InnerClass();
-        Inner inner = in.new Inner();
+        Inner inner = new Inner();
     }
 }

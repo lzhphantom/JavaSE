@@ -16,7 +16,7 @@ public class DaemonTest {
     }
 
     private class Daemon implements Runnable {
-        private Thread[] t = new Thread[10];
+        private final Thread[] t = new Thread[10];
 
         @Override
         public void run() {

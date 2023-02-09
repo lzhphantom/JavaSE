@@ -11,7 +11,7 @@ import java.util.Objects;
  */
 public class GoodsCache {
     private volatile static GoodsCache goodsCache;
-    private Map<String, SoftReference<Goods>> cache;
+    private final Map<String, SoftReference<Goods>> cache;
     public  GoodsCache(){
         this.cache = new HashMap<>();
     }
