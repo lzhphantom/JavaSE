@@ -445,6 +445,83 @@ Java是一种面向对象的语言，而Java对象在JVM中的存储也是有一
 
    在性能上来说，如果竞争资源不激烈，两者的性能是差不多的，而当竞争资源非常激烈时（即有大量线程同时竞争），此时Lock的性能要远远优于synchronized。所以说，在具体使用时要根据适当情况选择。
 
+#### ConcurrentHashMap详解
+
+##### 一、jdk1.7版本时
+
+是一个分段锁，采用segments数组+HashEntry数组+链表。底层一个Segments数组，存储一个Segments对象，每个segment是继承ReentrantLock互斥锁，具有加解锁的功能，一个Segments中储存一个Entry数组，存储的每个Entry对象又是一个链表头结点。
+
+- put的时候：先对key做hash,找到segment数组中的位置index，然后竞争[lock锁](https://so.csdn.net/so/search?q=lock锁&spm=1001.2101.3001.7020)，如果获取到了锁，那就获取到了segment桶，然后再次hash确定存放的HashEntry数组的位置，然后插入数组到链表中，如果在链表中找到相同节点，则覆盖，没有就放到链表尾部。
+- get操作：get操作不用加锁，先对key做hash,找到segment数组中的位置index，然后再次hash确定存放的HashEntry数组的位置，然后在该位置的链表查找值。
+
+**分段锁 对整个桶数组进行了分割分段(Segment)，每一把锁只锁容器的Segment的数据，多线程访问容器里不同数据段的数据，就不会存在锁竞争，提高并发访问率。**
+
+##### 二、java8时
+
+ConcurrentHashMap是Node数组+链表+红黑树，和hashMap1.8版本类似
+
+用Synchronzie同步代码块和cas原子操作维护线程安全。
+
+Node数组使用来存放树或者链表的头结点，当一个链表中的数量到达一个数目时，会使查询速率降低，所以到达一定阈值时，会将一个链表转换为一个红黑二叉树，通告查询的速率。
+
+1. 主要属性
+
+   > LOAD_FACTOR: 负载因子, 默认75%, 当table使用率达到75%时, 为减少table
+   > 的hash碰撞, tabel长度将扩容一倍。负载因子计算: 元素总个数%table.lengh
+   > TREEIFY_THRESHOLD: 默认8, 当链表长度达到8时, 将结构转变为红黑树。
+   > UNTREEIFY_THRESHOLD: 默认6, 红黑树转变为链表的阈值。
+   > MIN_TRANSFER_STRIDE: 默认16, table扩容时, 每个线程最少迁移table的槽位
+   > 个数。
+   > MOVED: 值为-1, 当Node.hash为MOVED时, 代表着table正在扩容
+   > TREEBIN, 置为-2, 代表此元素后接红黑树。
+   > nextTable: table迁移过程临时变量, 在迁移过程中将元素全部迁移到nextTable
+   > 上。
+   > sizeCtl: 用来标志table初始化和扩容的,不同的取值代表着不同的含义:
+   > 0: table还没有被初始化
+   > -1: table正在初始化
+   > 小于-1: 实际值为resizeStamp(n)
+   > <<RESIZE_STAMP_SHIFT+2, 表明table正在扩容
+   > 大于0: 初始化完成后, 代表table最大存放元素
+   > 的个数, 默认为0.75*n
+   > transferIndex: table容量从n扩到2n时, 是从索引n->1的元素开始迁移,
+   > transferIndex代表当前已经迁移的元素下标
+   > ForwardingNode: 一个特殊的Node节点, 其hashcode=MOVED, 代表着此时
+   > table正在做扩容操作。扩容期间, 若table某个元素为null, 那么该元素设置为
+   > ForwardingNode, 当下个线程向这个元素插入数据时, 检查hashcode=MOVED, 就
+   > 会帮着扩容。
+
+2. 构造方法：
+
+   并没有直接new出来一个Node数组，只检查了数值之后确定容量大小，会在第一次put操作的时候判断Node数组是否为空，才会调用intiTable方法进行初始化。
+
+3. put操作：
+
+   判断Node数组是否为空，如果为空调用initTable方法进行初始化，方法里会用cas操作去修改sizeCtl属性的值，如果一个线程修改成-1（表示正在初始化）成功则对Node数组进行初始化。
+
+   初始化成功后，根据key的hash值&位运算找到Node数组的位置index，如果index位置上没有元素，则将根据这个key创建一个Node节点使用cas原子操作写入Node数组中，如果已经存在元素，则进入Synchronize同步代码，如果该节点hash不小于0，开始构建链表，判断链表中是否存在新建的Node，如果存在就覆盖，不存在就插入链表的尾部；如果该节点是TreeBin类型的节点，说明是红黑树结构，则通过putTreeVal方法往红黑树中插入节点； 如果binCount不为0，说明put操作对数据产生了影响，如果当前链表的个数达到8个，并且容量达到64，则通过treeifyBin方法转化为红黑树存储；如果put的时候遇到了数组在扩容（node数组位置的元素是ForwardingNode节点，该节点的hash值为-1，判断hash==move），当前线程会去帮忙迁移，调用helpTransfer()协助扩容。
+
+   - helpTransfer方法里主要做了如下事情:
+
+     - 检查是否扩容完成,对sizeCtrl = sizeCtrl+1, 然后调用transfer()进行真正的扩容。
+
+   - 扩容transfer：
+
+     - 扩容的整体步骤就是新建一个nextTab, size是之前的2倍, 将table上的非空元素
+
+       迁移到nextTab上面去。
+
+4. get操作：
+
+   根据key的hash值&位运算找到Node数组的位置index，然后在该位置的链表中获取，如果Key的值< 0 ,说明是红黑树
+
+5. 为什么要用synchronized，cas不是已经可以保证操作的线程安全吗？
+
+   CAS也是适用一些场合的，比如资源竞争小时，是非常适用的，不用进行内核态和用户态之间
+   的线程上下文切换，同时自旋概率也会大大减少，提升性能，但资源竞争激烈时（比如大量线
+   程对同一资源进行写和读操作）并不适用，自旋概率会大大增加，从而浪费CPU资源，降低性
+   能
+
 ### 4.java8新特性
+
 ### 5.java代码实例
 https://blog.csdn.net/guorui_java/article/details/120098618
