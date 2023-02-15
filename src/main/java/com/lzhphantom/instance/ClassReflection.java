@@ -1,11 +1,11 @@
-package sg.com.ncs.luozhihui.instance;
+package com.lzhphantom.instance;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 /**
- * @author luozhihui
+ * @author lzhphantom
  * @create 2/15/2023
  */
 public class ClassReflection {

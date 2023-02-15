@@ -1,4 +1,4 @@
-package sg.com.ncs.luozhihui.instance;
+package com.lzhphantom.instance;
 
 import lombok.Data;
 import org.springframework.cglib.beans.BeanMap;
@@ -15,7 +15,7 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * @author luozhihui
+ * @author lzhphantom
  * @create 2/15/2023
  */
 public class MapAndJavaBean {
