@@ -1,4 +1,4 @@
-package sg.com.ncs.luozhihui.instance;
+package com.lzhphantom.instance;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;

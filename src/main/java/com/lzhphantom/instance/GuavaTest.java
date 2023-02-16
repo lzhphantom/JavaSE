@@ -1,4 +1,4 @@
-package sg.com.ncs.luozhihui.instance;
+package com.lzhphantom.instance;
 
 import com.google.common.base.Function;
 import com.google.common.collect.*;

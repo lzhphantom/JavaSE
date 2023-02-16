@@ -1,4 +1,4 @@
-package sg.com.ncs.luozhihui.instance;
+package com.lzhphantom.instance;
 
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.extra.qrcode.QrCodeUtil;

@@ -1,4 +1,4 @@
-package sg.com.ncs.luozhihui.instance;
+package com.lzhphantom.instance;
 
 import java.io.BufferedReader;
 import java.io.IOException;
