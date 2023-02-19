@@ -1,4 +1,4 @@
-package sg.com.ncs.luozhihui.algorithm;
+package com.lzhphantom.algorithm;
 
 import lombok.Data;
 
@@ -56,10 +56,7 @@ public class RingLinkedList {
         }
         //创建辅助指针，帮助完成小孩出圈
         Boy helper = first;
-        while (true) {
-            if (helper.getNext() == first) {
-                break;
-            }
+        while (helper.getNext() != first) {
             helper = helper.getNext();
         }
         //加入startNo不是1，先让first和helper移动k-1次
@@ -69,10 +66,8 @@ public class RingLinkedList {
         }
         //当小孩报数之前，让first和helper指针同时移动countNum次,然后出圈
         //这里是一个循环的操作，直到圈中只有一个节点
-        while (true) {
-            if (helper == first) {//说明圈中只有一个节点
-                break;
-            }
+        //说明圈中只有一个节点
+        while (helper != first) {
             //让first、helper同时移动countNum- 1
             for (int i = 0; i < countNum - 1; i++) {
                 first = first.getNext();

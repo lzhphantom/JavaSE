@@ -1,4 +1,4 @@
-package sg.com.ncs.luozhihui.algorithm;
+package com.lzhphantom.algorithm;
 
 import java.io.File;
 import java.io.FileReader;
@@ -37,7 +37,7 @@ public class SparseArray {
         System.out.println("从磁盘中读取稀疏数组");
         int[][] sparseArray = new int[lines][3];
         try(FileReader reader = new FileReader("D:/sparseArr.txt")){
-            int getNum = 0;
+            int getNum;
             for (int i = 0; i < lines; i++) {
                 for (int j = 0; j < 3; j++) {
                     getNum = reader.read();
