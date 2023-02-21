@@ -1,4 +1,4 @@
-package sg.com.ncs.luozhihui.design.abstractFactory.factory;
+package com.lzhphantom.design.abstractFactory.factory;
 
 /**
  * @author lzhphantom

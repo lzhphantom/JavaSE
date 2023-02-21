@@ -1,6 +1,7 @@
-package sg.com.ncs.luozhihui.design.abstractFactory.factory;
+package com.lzhphantom.design.abstractFactory.factory;
 
-import sg.com.ncs.luozhihui.design.abstractFactory.pizza.Pizza;
+
+import com.lzhphantom.design.abstractFactory.pizza.Pizza;
 
 import java.io.BufferedReader;
 import java.io.IOException;

@@ -1,4 +1,4 @@
-package sg.com.ncs.luozhihui.algorithm;
+package com.lzhphantom.algorithm;
 
 import com.google.common.collect.Lists;
 

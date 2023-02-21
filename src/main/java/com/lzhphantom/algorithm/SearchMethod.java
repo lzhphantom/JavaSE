@@ -1,4 +1,4 @@
-package sg.com.ncs.luozhihui.algorithm;
+package com.lzhphantom.algorithm;
 
 import java.util.ArrayList;
 import java.util.Arrays;

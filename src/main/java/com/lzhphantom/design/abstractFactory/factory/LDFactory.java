@@ -1,8 +1,9 @@
-package sg.com.ncs.luozhihui.design.abstractFactory.factory;
+package com.lzhphantom.design.abstractFactory.factory;
 
-import sg.com.ncs.luozhihui.design.abstractFactory.pizza.LDCheesePizza;
-import sg.com.ncs.luozhihui.design.abstractFactory.pizza.LDPepperPizza;
-import sg.com.ncs.luozhihui.design.abstractFactory.pizza.Pizza;
+
+import com.lzhphantom.design.abstractFactory.pizza.LDCheesePizza;
+import com.lzhphantom.design.abstractFactory.pizza.LDPepperPizza;
+import com.lzhphantom.design.abstractFactory.pizza.Pizza;
 
 /**
  * @author lzhphantom

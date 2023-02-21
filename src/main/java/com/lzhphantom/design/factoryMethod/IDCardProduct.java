@@ -1,4 +1,4 @@
-package sg.com.ncs.luozhihui.design.factoryMethod;
+package com.lzhphantom.design.factoryMethod;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -9,7 +9,7 @@ import lombok.Data;
  */
 @AllArgsConstructor
 @Data
-public class IDCardProduct extends Product{
+public class IDCardProduct extends Product {
     private String owner;
     @Override
     public void use() {

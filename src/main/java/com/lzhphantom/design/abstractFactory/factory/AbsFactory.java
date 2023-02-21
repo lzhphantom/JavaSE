@@ -1,6 +1,6 @@
 package com.lzhphantom.design.abstractFactory.factory;
 
-import sg.com.ncs.luozhihui.design.abstractFactory.pizza.Pizza;
+import com.lzhphantom.design.abstractFactory.pizza.Pizza;
 
 /**
  * @author lzhphantom

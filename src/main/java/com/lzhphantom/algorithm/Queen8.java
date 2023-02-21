@@ -1,4 +1,4 @@
-package sg.com.ncs.luozhihui.algorithm;
+package com.lzhphantom.algorithm;
 
 /**
  * 八皇后问题，一个古老而著名的问题，是回溯算法的经典案例。
