@@ -377,3 +377,51 @@
 4. **持久性**：
 
    一旦事务提交，那么它对数据库中的对应数据的状态的变更就会永久保存到数据库中。--即使发生系统崩溃或机器宕机等故障，只要数据库能够重新启动，那么一定能够将其恢复到事务成功结束的状态
+
+## MYSQL explain 详解
+explain显示了mysql如何使用索引来处理select语句以及连接表。可以帮助选择更好的索引和写出更优化的查询语句。
+1. id SELECT识别符。这是SELECT查询序列号。
+2. select_type 有以下几种值
+    - simple 它表示简单的select,没有union和子查询
+    - primary 最外面的select,在有子查询的语句中，最外面的select查询就是primary
+    - union union语句的第二个或者说是后面那一个.
+        `explain select  *  from uchome_space limit 10 union select * from uchome_space limit 10,10`
+    - dependent union    UNION中的第二个或后面的SELECT语句，取决于外面的查询
+    - union result        UNION的结果
+3. table 输出的行所用的表，这个参数显而易见，容易理解
+4. type 连接类型。有多个参数，先从最佳类型到最差类型介绍**重要且困难**
+    - system 表仅有一行，这是const类型的特列，平时不会出现，这个也可以忽略不计
+    - const 表最多有一个匹配行，const用于比较primary key 或者unique索引。因为只匹配一行数据，所以很快记住一定是用到primary key 或者unique，并且只检索出两条数据的 情况下才会是const,看下面这条语句
+    - eq_ref 对于eq_ref的解释，mysql手册是这样说的:"对于每个来自于前面的表的行组合，从该表中读取一行。这可能是最好的联接类型，除了const类型。它用在一个索引的所有部分被联接使用并且索引是UNIQUE或PRIMARY KEY"。看下面的语句
+    `explain select * from uchome_spacefield,uchome_space where uchome_spacefield.uid = uchome_space.uid`
+    - ref 对于每个来自于前面的表的行组合，所有有匹配索引值的行将从这张表中读取。如果联接只使用键的最左边的前缀，或如果键不是UNIQUE或PRIMARY KEY（换句话说，如果联接不能基于关键字选择单个行的话），则使用ref。如果使用的键仅仅匹配少量行，该联接类型是不错的。
+    - ref_of_null 该联接类型如同ref，但是添加了MySQL可以专门搜索包含NULL值的行。在解决子查询中经常使用该联接类型的优化。
+    - index_merge 该联接类型表示使用了索引合并优化方法。在这种情况下，key列包含了使用的索引的清单，key_len包含了使用的索引的最长的关键元素。
+    - unique_subquery
+    - index_subquery
+    - range 给定范围内的检索，使用一个索引来检查行。看下面两条语句
+    `explain select * from uchome_space where uid in (1,2)`
+    `xplain select * from uchome_space where groupid in (1,2)`
+    uid有索引，groupid没有索引，结果是第一条语句的联接类型是range,第二个是ALL.以为是一定范围所以说像 between也可以这种联接,很明显
+    - index 该联接类型与ALL相同，除了只有索引树被扫描。这通常比ALL快，因为索引文件通常比数据文件小。也就是说虽然all和Index都是读全表，但index是从索引中读取的，而all是从硬盘中读的）
+    - ALL 对于每个来自于先前的表的行组合，进行完整的表扫描。如果表是第一个没标记 const的表，这通常不好，并且通常在它情况下 很差。通常可以增加更多的索引而不要使用 ALL，使得行能基于前面的表中的常数值或列值被检索出。
+5. possible_keys 提示使用哪个索引会在该表中找到行，不太重要
+6. keys MYSQL使用的索引，简单且重要
+7. key_len MYSQL使用的索引长度
+8. ref ref列显示使用哪个列或常数与key一起从表中选择行。
+9. rows 显示MYSQL执行查询的行数，简单且重要，数值越大越不好，说明没有用好索引
+10. Extra 该列包含MySQL解决查询的详细信息。
+    - Distinct MySQL发现第1个匹配行后，停止为当前的行组合搜索更多的行。一直没见过这个值
+    - Not exists
+    - range checked for each record 没有找到合适的索引
+    - using filesort 
+    - using index 只使用索引树中的信息而不需要进一步搜索读取实际的行来检索表中的信息。这个比较容易理解，就是说明是否使用了索引
+    - using temporary 为了解决查询，MySQL需要创建一个临时表来容纳结果。典型情况如查询包含可以按不同情况列出列的GROUP BY和ORDER BY子句时。
+    - using where WHERE子句用于限制哪一个行匹配下一个表或发送到客户。除非你专门从表中索取或检查所有行，如果Extra值不为Using where并且表联接类型为ALL或index，查询可能会有一些错误。（这个说明不是很理解，因为很多很多语句都会有where条件，而type为all或index只能说明检索的数据多，并不能说明错误，useing where不是很重要，但是很常见）
+    - using sort_union(...), using union(...), using intersect(...) 这些函数说明如何为index_merge联接类型合并索引扫描
+    - using index for group-by 类似于访问表的Using index方式，Using index for group-by表示MySQL发现了一个索引，可以用来查询GROUP BY或DISTINCT查询的所有列，而不要额外搜索硬盘访问实际的表。并且，按最有效的方式使用索引，以便对于每个组，只读取少量索引条目。
+11. 为什么不建议使用外键
+    在早期的数据库表结构设计中，往往会把一张表引用另外一张表的字段（通常是 id）作为外键，借助 MySQL 自动维护外键，确实能够省掉很多开发工作，但是外键实际的代价不低，很多数据表设计规范已经明确禁止使用外键。
+    外键并不是没有代价的。事实上，外键通常会需要服务器地在更改数据的时候检查另一张表。尽管 InnoDB 使用了索引提高这个操作速度，但并没有让数据检查的影响消失。甚至还可能产生一个很大的没有筛选性的索引。
+    当然，外键在某些情况也能够改善性能。如果我们需要保证两个关联表的数据必须保持一致的时候，使用 MySQL 服务器进行检测会比程序来检测效率更高。外键在那种`级联删除`或更新的场合也很有用。但是这类操作是逐行进行的，因此会比批量删除或批量操作更慢。
+    从众多互联网企业的数据库设计规范来看，外键是一再被重申要被禁用的。不单单是性能问题，而且互联网的业务多变，如果是表结构发生变动，很可能会导致外键关联的表出现意想不到的问题。因此，在非必要的情况下不要用外键，除非你只是为了验证外键的功能。
