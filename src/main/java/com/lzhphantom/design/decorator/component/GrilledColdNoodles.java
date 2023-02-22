@@ -1,7 +1,7 @@
-package sg.com.ncs.luozhihui.design.decorator.component;
+package com.lzhphantom.design.decorator.component;
 
 /**
- * @author luozhihui
+ * @author lzhphantom
  * @create 2/22/2023
  */
 public class GrilledColdNoodles extends Snack {

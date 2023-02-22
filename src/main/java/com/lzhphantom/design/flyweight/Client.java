@@ -1,4 +1,4 @@
-package sg.com.ncs.luozhihui.design.flyweight;
+package com.lzhphantom.design.flyweight;
 
 /**
  * @author lzhphantom

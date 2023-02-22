@@ -1,9 +1,9 @@
-package sg.com.ncs.luozhihui.design.flyweight;
+package com.lzhphantom.design.flyweight;
 
 import lombok.AllArgsConstructor;
 
 /**
- * @author luozhihui
+ * @author lzhphantom
  * @create 2/22/2023
  */
 @AllArgsConstructor

@@ -1,10 +1,9 @@
-package sg.com.ncs.luozhihui.design.decorator;
+package com.lzhphantom.design.decorator;
 
-import lombok.AllArgsConstructor;
-import sg.com.ncs.luozhihui.design.decorator.component.Snack;
+import com.lzhphantom.design.decorator.component.Snack;
 
 /**
- * @author luozhihui
+ * @author lzhphantom
  * @create 2/22/2023
  */
 

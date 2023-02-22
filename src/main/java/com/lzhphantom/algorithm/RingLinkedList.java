@@ -5,7 +5,7 @@ import lombok.Data;
 import java.util.Objects;
 
 /**
- * @author luozhihui
+ * @author lzhphantom
  * @create 2/17/2023
  */
 public class RingLinkedList {

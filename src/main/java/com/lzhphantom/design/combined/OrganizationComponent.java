@@ -1,9 +1,9 @@
-package sg.com.ncs.luozhihui.design.combined;
+package com.lzhphantom.design.combined;
 
 import lombok.Data;
 
 /**
- * @author luozhihui
+ * @author lzhphantom
  * @create 2/22/2023
  */
 @Data

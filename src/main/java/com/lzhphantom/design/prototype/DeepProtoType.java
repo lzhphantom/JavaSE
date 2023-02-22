@@ -1,4 +1,4 @@
-package sg.com.ncs.luozhihui.design.prototype;
+package com.lzhphantom.design.prototype;
 
 import com.google.common.collect.Lists;
 import lombok.Data;
@@ -8,7 +8,7 @@ import java.io.*;
 import java.util.ArrayList;
 
 /**
- * @author luozhihui
+ * @author lzhphantom
  * @create 2/22/2023
  */
 @Data

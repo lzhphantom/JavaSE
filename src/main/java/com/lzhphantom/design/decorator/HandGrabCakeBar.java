@@ -1,11 +1,11 @@
-package sg.com.ncs.luozhihui.design.decorator;
+package com.lzhphantom.design.decorator;
 
-import sg.com.ncs.luozhihui.design.decorator.component.GrilledColdNoodles;
-import sg.com.ncs.luozhihui.design.decorator.component.HandGrabCake;
-import sg.com.ncs.luozhihui.design.decorator.component.Snack;
+import com.lzhphantom.design.decorator.component.GrilledColdNoodles;
+import com.lzhphantom.design.decorator.component.HandGrabCake;
+import com.lzhphantom.design.decorator.component.Snack;
 
 /**
- * @author luozhihui
+ * @author lzhphantom
  * @create 2/22/2023
  */
 public class HandGrabCakeBar {
@@ -31,7 +31,6 @@ public class HandGrabCakeBar {
 
         // 3. order 加入一根烤肠
 
-        order = new Sausage(order);
 
         System.out.println("手抓饼 加入1个鸡蛋 加入2个鸡蛋 加1根烤肠 费用 =" + order.cost());
         System.out.println("手抓饼 加入1个鸡蛋 加入2个鸡蛋 加1根烤肠 描述 = " + order.getDes());

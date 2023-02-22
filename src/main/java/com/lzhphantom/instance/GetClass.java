@@ -23,6 +23,6 @@ public class GetClass {
         Class<GetClass> getClassClass = GetClass.class;
     }
     public void test3() throws ClassNotFoundException {
-        Class<?> clazz = Class.forName("sg.com.ncs.luozhihui.instance.GetClass");
+        Class<?> clazz = Class.forName("sg.com.ncs.lzhphantom.instance.GetClass");
     }
 }

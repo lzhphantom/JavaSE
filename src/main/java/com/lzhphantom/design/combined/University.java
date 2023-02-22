@@ -1,4 +1,4 @@
-package sg.com.ncs.luozhihui.design.combined;
+package com.lzhphantom.design.combined;
 
 import com.google.common.collect.Lists;
 
@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * @author luozhihui
+ * @author lzhphantom
  * @create 2/22/2023
  */
 public class University extends OrganizationComponent{

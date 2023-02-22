@@ -1,7 +1,7 @@
-package sg.com.ncs.luozhihui.design.proxy;
+package com.lzhphantom.design.proxy;
 
 /**
- * @author luozhihui
+ * @author lzhphantom
  * @create 2/22/2023
  */
 public interface IMovie {

@@ -1,11 +1,11 @@
-package sg.com.ncs.luozhihui.design.flyweight;
+package com.lzhphantom.design.flyweight;
 
 import com.google.common.collect.Maps;
 
 import java.util.Map;
 
 /**
- * @author luozhihui
+ * @author lzhphantom
  * @create 2/22/2023
  */
 public class WebSiteFactory {

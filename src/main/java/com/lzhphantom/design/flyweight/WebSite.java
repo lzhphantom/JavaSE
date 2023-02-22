@@ -1,7 +1,7 @@
-package sg.com.ncs.luozhihui.design.flyweight;
+package com.lzhphantom.design.flyweight;
 
 /**
- * @author luozhihui
+ * @author lzhphantom
  * @create 2/22/2023
  */
 public abstract class WebSite {

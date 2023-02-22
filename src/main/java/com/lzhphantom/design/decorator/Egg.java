@@ -1,6 +1,6 @@
 package com.lzhphantom.design.decorator;
 
-import sg.com.ncs.luozhihui.design.decorator.component.Snack;
+import com.lzhphantom.design.decorator.component.Snack;
 
 /**
  * @author lzhphantom

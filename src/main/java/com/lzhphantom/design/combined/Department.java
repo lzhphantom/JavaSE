@@ -1,7 +1,7 @@
-package sg.com.ncs.luozhihui.design.combined;
+package com.lzhphantom.design.combined;
 
 /**
- * @author luozhihui
+ * @author lzhphantom
  * @create 2/22/2023
  */
 public class Department extends OrganizationComponent{

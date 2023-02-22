@@ -1,9 +1,12 @@
-package sg.com.ncs.luozhihui.design.proxy;
+package com.lzhphantom.design.proxy;
+
+import com.lzhphantom.design.proxy.IMovie;
+import com.lzhphantom.design.proxy.Movie;
 
 import java.lang.reflect.Proxy;
 
 /**
- * @author luozhihui
+ * @author lzhphantom
  * @create 2/22/2023
  */
 public class MovieProxy {
