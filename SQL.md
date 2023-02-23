@@ -58,7 +58,7 @@
           
             > SELECT COUNT(DISTINCT column_name) / COUNT(*) FROM table_name;
         - 然后再通过如下 SQL 得到某一长度 prefix_length
-            
+          
             > SELECT COUNT(DISTINCT LEFT(column_name, prefix_length)) / COUNT(*) FROM table_name;
       > 在上面这条 SQL 执行的时候，我们要注意选择合适的 prefix_length，直至计算结果`最接近于`全列选择性的时候，就是最佳结果了，然后使用这个 prefix_length 就可以创建前缀索引了
       > 在前缀索引中 B+Tree 里保存的`根本就不是完整的`表字段的值，必须要回表才能拿到需要的数据。所以，用了前缀索引，就用不了覆盖索引了
@@ -830,3 +830,702 @@ SHOW STATUS LIKE 'Last_query_cost'
 
 最后一个阶段是将结果返回给客户端，即使查询不需要返回结果集给客户端，MySQL 仍然会返回这个查询的一些信息，如该查询影响到的行数。如果查询可以被缓存，那么 MySQL 在这个阶段也会将结果存放到查询缓存中。MySQL 将结果集返回客户端是一个增量、逐步返回的过程。例如：关联查询操作，一旦服务器处理完最后一个关联表，开始生成第一条结果时，MySQL 就可以开始向客户端逐步返回结果集了。这样处理的好处：服务端无须存储太多的结果，也就不会因为要返回太多结果而消耗太多内存。另外，这样处理也让 MySQL客户端第一时间获得返回的结果。
 结果集中的每一行都会以一个满足 MySQL 客户端/服务端通信协议的封包发送，再通过 TCP 协议进行传输，在 TCP 传输的过程中，可能对 MySQL 的封包进行缓存然后批量传输。
+
+## MySQL 分区表原理及使用详解
+
+### 什么是表分区
+
+表分区，是指根据一定规则，将数据库中的一张表分解成多个更小的，容易管理的部分。从逻辑上看，只有一张表，但是底层却是由多个物理分区组成。
+
+### 表分区和分表的区别
+
+分表：指的是通过一定规则，将一张表分解成多张不同的表。比如将用户订单记录根据时间成多个表。 分表与分区的区别在于：分区从逻辑上来讲只有一张表，而分表则是将一张表分解成多张表。
+
+### 表分区有什么好处
+
+1. 分区表的数据可以分布在不同的物理设备上，从而高效地利用多个硬件设备。
+2. 和单个磁盘或者文件系统相比，可以存储更多数据 
+3. 优化查询。在where语句中包含分区条件时，可以只扫描一个或多个分区表来提高查询效率；涉及sum和count语句时，也可以在多个分区上并行处理，最后汇总结果。
+4. 分区表更容易维护。例如：想批量删除大量数据可以清除整个分区。
+5. 可以使用分区表来避免某些特殊的瓶颈，例如InnoDB的单个索引的互斥访问，ext3问价你系统的inode锁竞争等。
+
+### 分区表的限制因素
+
+1. 一个表最多只能有1024个分区 
+2. MySQL5.1中，分区表达式必须是整数，或者返回整数的表达式。在MySQL5.5中提供了非整数表达式分区的支持。
+3. 如果分区字段中有主键或者唯一索引的列，那么多有主键列和唯一索引列都必须包含进来。即：分区字段要么不包含主键或者索引列，要么包含全部主键和索引列。
+4. 分区表中无法使用外键约束 
+5. MySQL的分区适用于一个表的所有数据和索引，不能只对表数据分区而不对索引分区，也不能只对索引分区而不对表分区，也不能只对表的一部分数据分区。
+
+### 如何判断当前MySQL是否支持分区
+
+`show variables like '%partition%'`
+
+```mysql
+mysql> show variables like '%partition%';
++-------------------+-------+
+| Variable_name     | Value |
++-------------------+-------+
+| have_partitioning | YES   |
++-------------------+-------+
+1 row in set (0.00 sec)
+-----------------------------------
+```
+
+### MySQL支持的分区类型有哪些
+
+1. **Range分区**
+
+   利用取值范围进行分区，区间要连续并且不能互相重叠。 语法：
+
+   ```mysql
+   partition by range(exp)( //exp可以为列名或者表达式，比如to_date(created_date)
+       partition p0 values less than(num)
+   )
+   ```
+
+   例如：
+
+   ```mysql
+   mysql> create table emp(
+       -> id INT NOT null,
+       -> store_id int not null
+       -> )
+       -> partition by range(store_id)(
+       ->   partition p0 values less than(10),
+       ->   partition p1 values less than(20)
+       -> );
+   ```
+
+   RANGE分区存在的问题
+
+   - range范围覆盖问题：当插入的记录中对应的分区键的值不在分区定义的范围中的时候，插入语句会失败。 
+
+     上面的例子，如果我插入一条store_id = 30的记录会怎么样呢？ 我们上面分区的时候，最大值是20，如果插入一条超过20的记录，会报错:
+
+     mysql> insert into emp(id,store_id) values(2,30); 
+
+     ERROR 1526 (HY000): Table has no partition for value 30
+
+     解决办法 A. 预估分区键的值，及时新增分区。 
+
+     B. 设置分区的时候，使用values less than maxvalue
+
+   - Range分区中，分区键的值如果是NULL，将被作为一个最小值来处理。
+
+   **Columns分区**
+
+   MySQL5.5中引入的分区类型，解决了5.5版本之前range分区和list分区只支持整数分区的问题。 Columns分区可以细分为 range columns分区和 list columns分区，他们都支持整数，日期时间，字符串三大数据类型。（不支持text和blob类型作为分区键） columns分区还支持多列分区（这里不详细展开）。
+
+   ```mysql
+   CREATE TABLE members (
+       firstname VARCHAR(25) NOT NULL,
+       lastname VARCHAR(25) NOT NULL,
+       username VARCHAR(16) NOT NULL,
+       joined DATE NOT NULL
+   )
+   PARTITION BY RANGE COLUMNS(joined) (
+       PARTITION p0 VALUES LESS THAN ('1960-01-01'),
+       PARTITION p1 VALUES LESS THAN ('1970-01-01'),
+       PARTITION p2 VALUES LESS THAN ('1980-01-01'),
+       PARTITION p3 VALUES LESS THAN ('1990-01-01'),
+       PARTITION p4 VALUES LESS THAN MAXVALUE);
+   ```
+
+   
+
+2. **LIST分区**
+
+   List分区是建立离散的值列表告诉数据库特定的值属于哪个分区。 语法：
+
+   ```mysql
+   partition by list(exp)( //exp为列名或者表达式
+           partition p0 values in (3,5)  //值为3和5的在p0分区
+       )
+   ```
+
+   与Range不同的是，list分区不必生命任何特定的顺序。例如：
+
+   ```mysql
+   mysql> create table emp1(
+       -> id int not null,
+       -> store_id int not null
+       -> )
+       -> partition by list(store_id)(
+       ->   partition p0 values in (3,5),
+       ->   partition p1 values in (2,6,7,9)
+       -> );
+   ```
+
+   
+
+3. **Hash分区**
+
+   Hash分区主要用来分散热点读，确保数据在预先确定个数的分区中尽可能平均分布。 MySQL支持两种Hash分区:常规Hash分区和线性Hash分区。 A. 常规Hash分区:使用取模算法 语法：
+
+   ```mysql
+   partition by hash(store_id) partitions 4;
+   ```
+
+   上面的语句，根据store_id对4取模，决定记录存储位置。 比如store_id = 234的记录，MOD(234,4)=2,所以会被存储在第二个分区。
+
+   常规Hash分区的优点和不足
+
+   B. 线性Hash分区：分区函数是一个线性的2的幂的运算法则。 语法：
+
+   partition by LINER hash(store_id) partitions 4;
+
+   与常规Hash的不同在于，“Liner”关键字。 算法介绍: 假设要保存记录的分区编号为N,num为一个非负整数,表示分割成的分区的数量，那么N可以通过以下步骤得到：
+
+   1. 找到一个大于等于num的2的幂，这个值为V，V可以通过下面公式得到：
+      V = Power(2,Ceiling(Log(2,num)))
+      例如：刚才设置了4个分区，num=4，Log(2,4)=2,Ceiling(2)=2,power(2,2)=4,即V=4
+   2. 置N=F(column_list)&(V-1)
+      例如：刚才V=4，store_id=234对应的N值，N = 234&（4-1） =2
+   3. 当N>=num,设置V=Ceiling(V/2),N=N&(V-1)
+      例如：store_id=234,N=2<4,所以N就取值2，即可。
+      假设上面算出来的N=5，那么V=Ceiling(2.5)=3,N=234&(3-1)=1,即在第一个分区。
+
+   线性Hash的优点和不足
+
+4. **Key分区**
+
+   类似Hash分区，Hash分区允许使用用户自定义的表达式，但Key分区不允许使用用户自定义的表达式。Hash仅支持整数分区，而Key分区支持除了Blob和text的其他类型的列作为分区键。 语法:
+
+   partition by key(exp) partitions 4;//exp是零个或多个字段名的列表
+
+   key分区的时候，exp可以为空，如果为空，则默认使用主键作为分区键，没有主键的时候，会选择非空惟一键作为分区键。
+
+5. **子分区**
+
+   subpartitioning可以在原有分区表的基础上，对每个分区再次进行分区(子分区)。子分区的分区类型可以和父分区不同，因此也叫复合分区。
+
+   下面的示例即对range partition的每个分区再次进行hash partition。父分区p0,p1,p2将各包含2个子分区，因此最终分区的数量为3*2=6个
+
+   ```mysql
+   CREATE TABLE ts (id INT, purchased DATE)
+       PARTITION BY RANGE( YEAR(purchased) )        -- 父分区采用range partition
+       SUBPARTITION BY HASH( TO_DAYS(purchased) )   -- 子分区采用hash partition
+       SUBPARTITIONS 2                              -- 子分区数量为2
+       (
+           PARTITION p0 VALUES LESS THAN (1990),
+           PARTITION p1 VALUES LESS THAN (2000),
+           PARTITION p2 VALUES LESS THAN MAXVALUE
+       );
+   ```
+
+   你也可以显示的定义每个子分区的名称，但如果采用这种方式定义，则必须显示指定所有子分区。且子分区的数量必须相同，子分区名称不能重复：
+
+   ```mysql
+   CREATE TABLE ts (id INT, purchased DATE)
+       PARTITION BY RANGE( YEAR(purchased) )         --父分区为range partition
+       SUBPARTITION BY HASH( TO_DAYS(purchased) )    --子分区为hash partition
+      (
+           PARTITION p0 VALUES LESS THAN (1990) (
+               SUBPARTITION s0,                      -- 显式指定子分区名称和数量
+               SUBPARTITION s1
+           ),
+           PARTITION p1 VALUES LESS THAN (2000) (
+               SUBPARTITION s2,
+               SUBPARTITION s3
+           ),
+           PARTITION p2 VALUES LESS THAN MAXVALUE (
+               SUBPARTITION s4,
+               SUBPARTITION s5
+           )
+       );
+   ```
+
+   
+
+### 分区对于NULL值的处理
+
+MySQ允许分区键值为NULL，分区键可能是一个字段或者一个用户定义的表达式。一般情况下，MySQL在分区的时候会把NULL值当作零值或者一个最小值进行处理。
+
+注意
+Range分区中：NULL值被当作最小值来处理
+List分区中：NULL值必须出现在列表中，否则不被接受
+Hash/Key分区中：NULL值会被当作零值来处理
+
+### 分区管理
+
+分区管理包括对于分区的增加，删除，以及查询。
+
+增加分区：
+
+对于Range分区和LIst分区来说：
+
+```mysql
+alter table table_name add partition (partition p0 values ...(exp))
+```
+
+values后面的内容根据分区的类型不同而不同。
+
+对于Hash分区和Key分区来说：
+
+```mysql
+alter table table_name add partition partitions 8;
+```
+
+上面的语句，指的是新增8个分区 。
+
+删除分区
+
+对于Range分区和List分区：
+
+```mysql
+alter table table_name drop partition p0; //p0为要删除的分区名称
+```
+
+删除了分区，同时也将删除该分区中的所有数据。同时，如果删除了分区导致分区不能覆盖所有值，那么插入数据的时候会报错。
+
+对于Hash和Key分区：
+
+```mysql
+alter table table_name coalesce partition 2;
+```
+
+分区查询 1）查询某张表一共有多少个分区
+
+```mysql
+mysql> select 
+ ->   partition_name,
+ ->   partition_expression,
+ ->   partition_description,
+ ->   table_rows
+ -> from 
+ ->   INFORMATION_SCHEMA.partitions
+ -> where
+ ->   table_schema='test'
+ ->   and table_name = 'emp';
++----------------+----------------------+-----------------------+------------+
+| partition_name | partition_expression | partition_description | table_rows |
++----------------+----------------------+-----------------------+------------+
+| p0             | store_id             | 10                    |          0 |
+| p1             | store_id             | 20                    |          1 |
++----------------+----------------------+-----------------------+------------+
+
+```
+
+2）查看执行计划，判断查询数据是否进行了分区过滤
+
+```mysql
+mysql> explain partitions select * from emp where store_id=10 \G;
+*************************** 1. row ***************************
+        id: 1
+select_type: SIMPLE
+     table: emp
+partitions: p1
+      type: system
+possible_keys: NULL
+       key: NULL
+   key_len: NULL
+       ref: NULL
+      rows: 1
+     Extra: 
+1 row in set (0.00 sec)
+```
+
+![img](https://img-blog.csdnimg.cn/04d64c51893447f683bd2b7f5ea1db45.png)
+
+## MyISAM和InnoDb的对比
+
+Mysql 数据库中，最常用的两种引擎是 innordb 和 myisam。InnoDB 是 Mysql 的默
+认存储引擎。
+
+### 事务处理上
+
+**MyISAM** 强调的是性能，查询的速度比 InnoDB 类型更快，但是不提供事务支持。
+**InnoDB** 提供事务支持事务。
+
+### 外键
+
+MyISAM 不支持外键，InnoDB 支持外键。
+
+### 锁
+
+MyISAM 只支持表级锁，InnoDB 支持行级锁和表级锁，默认是行级锁，行锁大幅度提高了多用户并发操作的性能。innodb 比较适合于插入和更新操作比较多的情况，而 myisam 则适合用于频繁查询的情况。另外，InnoDB 表的行锁也不是绝对的，如果在执行一个 SQL 语句时，MySQL 不能确定要扫描的范围，InnoDB 表同样会锁全表，例如 update table set num=1 where name like “%aaa%”。
+
+### 全文索引
+
+MyISAM 支持全文索引， InnoDB 不支持全文索引。innodb 从 mysql5.6 版本开始提供对全文索引的支持。
+
+### 表主键
+
+**MyISAM**：允许没有主键的表存在。
+**InnoDB**：如果没有设定主键，就会自动生成一个 6 字节的主键(用户不可见)。
+
+### 表的具体行数
+
+MyISAM：select count(*) from table,MyISAM 只要简单的读出保存好的行数。因为
+ MyISAM 内置了一个计数器，count(*)时它直接从计数器中读。
+ InnoDB：不保存表的具体行数，也就是说，执行 select count(*) from table 时，InnoDB要扫描一遍整个表来计算有多少行。
+
+一张表,里面有 ID 自增主键,当 insert 了 17 条记录之后,删除了第 15,16,17 条记录,再把 Mysql 重启,再 insert 一条记录,这条记录的 ID 是 18 还是 15 ？
+
+如果表的类型是 MyISAM， 那么是 18。因为 MyISAM 表会把自增主键的最大 ID 记录到数据文件里， 重启MySQL 自增主键的最大 ID 也不会丢失。
+
+如果表的类型是 InnoDB， 那么是 15。InnoDB 表只是把自增主键的最大 ID 记录到内存中， 所以重启数据库会导致最大 ID 丢失
+
+### 数据分部对比
+
+![img](https://img2020.cnblogs.com/blog/1905499/202110/1905499-20211022091117326-881143815.png)
+
+1. **MyISAM数据分布非常简单，按照数据插入顺序存储在磁盘上**
+
+   MyISAM数据分部
+
+   ![img](https://img2020.cnblogs.com/blog/1905499/202110/1905499-20211022091132008-1378914757.png)
+
+   数据分部
+
+   ![img](https://img2020.cnblogs.com/blog/1905499/202110/1905499-20211022094304073-1425139858.png)
+
+2. **InnoDB数据分部**
+
+   ![img](https://img2020.cnblogs.com/blog/1905499/202110/1905499-20211022095623026-805155167.png)
+
+   在InnoDB中，聚簇索引就是表，不像MyISAM那样需要独立的行存储
+
+   聚簇索引每一个叶子结点包含了主键值、事务ID、用于事务和MVCC的回滚还真以及所有剩余列
+
+   InnoDB二级索引叶子结点中存储的不是"行指针"，而是主键值，以此作为指向行的指针
+
+   减少了行移动或者数据页分裂时二级索引的维护工作，主键值当行指针会让二级索引占用更多空间，InnoDB在移动时无需更新二级索引这个指针
+
+   [![img](https://img2020.cnblogs.com/blog/1905499/202110/1905499-20211022091132008-1378914757.png)](https://img2020.cnblogs.com/blog/1905499/202110/1905499-20211022091132008-1378914757.png)
+
+   数据分布
+
+   [![img](https://img2020.cnblogs.com/blog/1905499/202110/1905499-20211022094304073-1425139858.png)](https://img2020.cnblogs.com/blog/1905499/202110/1905499-20211022094304073-1425139858.png)
+
+   ### InnoDB数据分布[#](https://www.cnblogs.com/BigBender/p/15433641.html#1634866984248)
+
+   [![img](https://img2020.cnblogs.com/blog/1905499/202110/1905499-20211022095623026-805155167.png)](https://img2020.cnblogs.com/blog/1905499/202110/1905499-20211022095623026-805155167.png)
+
+    
+
+   在InnoDB中，聚簇索引就是表，不像MyISAM那样需要独立的行存储
+
+   聚簇索引每一个叶子结点包含了主键值、事务ID、用于事务和MVCC的回滚还真以及所有剩余列
+
+   InnoDB二级索引叶子结点中存储的不是"行指针"，而是主键值，以此作为指向行的指针
+
+   减少了行移动或者数据页分裂时二级索引的维护工作，主键值当行指针会让二级索引占用更多空间，InnoDB在移动时无需更新二级索引这个指针
+
+   **InnoDB二级索引分布**
+
+   ![img](https://img2020.cnblogs.com/blog/1905499/202110/1905499-20211022101030433-1277458250.png)
+
+   聚簇和非聚簇表对比
+
+   ![img](https://img2020.cnblogs.com/blog/1905499/202110/1905499-20211022101602807-763987566.png)
+
+## MySQL全文索引
+
+众所周知，使用like '%xxx%'进行模糊查询时，字段的索引就会失效。因此，在数据量大的情况下，通过此种方式查询的效率极低。这个时候，就可通过全文索引（Full-Text Search）来进行优化。
+
+​    全文索引（Full-Text Search）是将存储于数据库中的整本书或整篇文章中的任意信息查找出来的技术。它可以根据需要获得全文中有关章、节、段、句、词等信息，也可以进行各种统计和分析。
+
+​    全文索引一般是通过倒排索引实现的。
+
+### 一、倒排索引
+
+ 倒排索引同 B+Tree 一样，也是一种索引结构。它在辅助表中存储了单词与单词自身在一个或多个文档中所在位置之间的映射，这通常利用关联数组实现，拥有两种表现形式：
+
+​    inverted file index：{单词，单词所在文档的id}
+
+​    full inverted index：{单词，（单词所在文档的id，再具体文档中的位置）}
+
+**创建删除全文索引**
+
+若需对大量数据设置全文索引，建议先添加数据再创建索引。
+
+1. 创建表时创建全文索引
+
+   ```mysql
+   create table 表名(字段名1,字段名2,字段名3,字段名4,FULLTEXT full_index_name (字段名))ENGINE=InnoDB;
+   ```
+
+2. 为已有表添加全文索引
+
+   ```mysql
+   create fulltext index 索引名称 on 表名(字段名)
+   ```
+
+3. 删除全文索引
+
+   ```mysql
+   alter table 表名
+       drop index 索引名;
+   ```
+
+### 二、使用全文索引
+
+```mysql
+MATCH(col1,col2,...) AGAINST(expr[search_modifier])
+search_modifier:
+{
+    IN NATURAL LANGUAGE MODE
+    | IN NATURAL LANGUAGE MODE WITH QUERY EXPANSION
+    | IN BOOLEAN MODE
+    | WITH QUERY EXPANSION
+}
+```
+
+全文索引分为三种类型：
+
+- 自然语言的全文索引（Natural Language）
+
+  自然语言的全文索引可以计算每个文档对象和查询的相关性。
+
+  ```mysql
+   
+  SELECT
+      *,
+      MATCH (字段名) against ( '需要符合的内容' ) AS Relevance 
+  FROM
+      表名;
+  ```
+
+  相关性主要与以下条件有关：
+
+  - word 是否在文档中出现
+  - word 在文档中出现的次数
+  - word 在索引列中的数量
+  - 多少个文档包含该 word
+
+- 布尔全文索引（Boolean）
+
+  布尔搜索使用特殊查询语言的规则来解释搜索字符串，该字符串包含要搜索的词，它还可以包含指定要求的运算符，例如匹配行中必须存在或不存在某个词，或者它的权重应高于或低于通常情况。
+
+  Boolean 全文检索支持的类型（可以通过ft_boolean_syntax变量来查看）包括：
+
+  - +：表示该 word 必须存在
+  - -：表示该 word 必须不存在
+  - (no operator)表示该 word 是可选的，但是如果出现，其相关性会更高
+  - @distance表示查询的多个单词之间的距离是否在 distance 之内，distance 的单位是字节，这种全文检索的查询也称为 Proximity Search，如 MATCH(context) AGAINST('"Pease hot"@30' IN BOOLEAN MODE)语句表示字符串 Pease 和 hot 之间的距离需在30字节内
+  - `>`：表示出现该单词时增加相关性
+  - <：表示出现该单词时降低相关性
+  - ~：表示允许出现该单词，但出现时相关性为负
+  - `*`：表示以该单词开头的单词，如 lik*,表示可以是 lik，like，likes
+  - " ：表示短语
+
+  ```mysql
+  --+ -
+  SELECT
+      * 
+  FROM
+      `fts_articles` 
+  WHERE
+      MATCH ( title, body ) AGAINST ( '+MySQL -YourSQL' IN BOOLEAN MODE );
+   
+  --no operator
+  SELECT
+      * 
+  FROM
+      `fts_articles` 
+  WHERE
+      MATCH ( title, body ) AGAINST ( 'MySQL IBM' IN BOOLEAN MODE );
+   
+  --@
+  SELECT
+      * 
+  FROM
+      `fts_articles` 
+  WHERE
+      MATCH ( title, body ) AGAINST ( '"DB2 IBM"@3' IN BOOLEAN MODE );
+   
+   
+  --> <
+  SELECT
+      * 
+  FROM
+      `fts_articles` 
+  WHERE
+      MATCH ( title, body ) AGAINST ( '+MySQL +(>database <DBMS)' IN BOOLEAN MODE );
+   
+  --~
+   
+  SELECT
+      * 
+  FROM
+      `fts_articles` 
+  WHERE
+      MATCH ( title, body ) AGAINST ( 'MySQL ~database' IN BOOLEAN MODE );
+   
+  --*
+  SELECT
+      * 
+  FROM
+      `fts_articles` 
+  WHERE
+      MATCH ( title, body ) AGAINST ( 'My*' IN BOOLEAN MODE );
+   
+  --"
+  SELECT
+      * 
+  FROM
+      `fts_articles` 
+  WHERE
+      MATCH ( title, body ) AGAINST ( '"MySQL Security"' IN BOOLEAN MODE );
+  ```
+
+  
+
+- 查询扩展搜索。
+
+  查询扩展相当于在自然语言索引的结果上，基于结果的关键字再进行一次查询。也就是说分成两个阶段：
+
+  - 第一阶段：根据搜索的单词进行全文索引查询
+  - 第二阶段：根据第一阶段产生的分词再进行一次全文检索的查询
+
+  ```mysql
+  SELECT column1, column2
+  FROM table1
+  WHERE MATCH(column1,column2)
+        AGAINST('keyword',WITH QUERY EXPANSION);
+  ```
+
+  
+
+在不使用in ... mode的情况下，默认采用的是自然语言的全文索引。
+
+### 三、注意点
+
+1. 自然语言全文索引创建索引时的字段需与查询的字段保持一致，即MATCH里的字段必须和FULLTEXT里的一模一样；
+
+2. 自然语言检索时，检索的关键字在所有数据中不能超过50%（即常见词），则不会检索出结果。可以通过布尔检索查询；
+
+3. 在mysql的stopword中的单词检索不出结果。可通过SELECT * FROM INFORMATION_SCHEMA.INNODB_FT_DEFAULT_STOPWORD查询所有的stopword。遇到这种情况，有两种解决办法：
+
+   1. stopword一般是mysql自建的，但可以通过设置ft_stopword_file变量为自定义文件，从而自己设置stopword，设置完成后需要重新创建索引。但不建议使用这种方法；
+   2. 使用布尔索引查询。
+
+4. 小于最短长度和大于最长长度的关键词无法查出结果。可以通过设置对应的变量来改变长度限制，修改后需要重新创建索引。
+
+   myisam引擎下对应的变量名为ft_min_word_len和ft_max_word_len
+
+   innodb引擎下对应的变量名为innodb_ft_min_token_size和innodb_ft_max_token_size
+
+5. MySQL 5.7.6 之前的版本不支持中文，需使用第三方插件
+
+6. 全文索引只能在 InnoDB（MySQL 5.6以后） 或 MyISAM 的表上使用，并且只能用于创建 char,varchar,text 类型的列。
+
+## MySQL中查询缓存
+
+当查询命中缓存时，立即返回结果。跳过了解析 优化和执行阶段
+
+***鸡肋***
+
+查询缓存在大部分时候都很鸡肋， 在 5.8 版本已经将查询缓存去掉了
+
+下面几个特性是它鸡肋的证据:
+
+### 什么时候不会被缓存
+
+1. **查询涉及的相关表数据发生变化时**
+   查询缓存系统会**跟踪查询中涉及的每个表**，如果这些表发生变化，**那么和这个表相关的所有的缓存数据都将失效**。这种机制效率看起来比较低，因为数据表变化时很有可能对应的查询结果并没有变更，但是**这种简单实现代价很小**，而这点对于一个非常繁忙的系统来说非常重要。
+
+2. **查询语句任何细微变化时**
+   MySql将查询结果存放在引用表中，通过一个哈希值引用，这个哈希值包含了如下因素，查询本身、要查询得数据库、客户端协议的版本等其他可能会影响返回结果的信息，判断缓存是否命中时，MySql不会解析、参数化、任何规整查询sql的操作，直接使用客户端发来的原始sql语句。任何字符上的不同，如空格、注释都会导致缓存不被命中。
+
+3. **查询语句中有不确定数据时**
+
+   - 包含 `NOW()` 、 `CURRENT_DATE()` 、`CURRENT_USER()` 、`CONNECTION_ID()` 等变化的信息
+   - 包含任何用户自定义函数，存储函数，用户变量，临时表，MySQL系统表 等
+   - 包含 子查询，存储过程（子查询的sql不是完整的，而是运行时被计算出来的）
+
+4. **查询结果太大**
+
+5. **查询缓存内存用完**
+
+   > 如果查询语句中包含任何的不确定函数，那么在查询缓存中是不可 能找到缓存结果的。因为即使之前刚刚执行了这样的查询，结果也不会放在查询缓存中。 MySQL在任何时候只要发现不能被缓存的部分，就会禁止这个查询被缓存。
+   >
+   > 
+
+### 查询缓存的缺点
+
+1. **对读和写操作带来额外的消耗**
+
+   - 读查询在开始之前必须先检查是否命中缓存
+   - MySql执行完SQL时，如果该SQL可以缓存，但是此时还没被缓存，会将数据写入缓存中
+   - 影响写操作，执行写入操作时，将此表对应的所有缓存都设置失效。对查询缓存失效的操作是靠全局锁保护的。防止此时又被缓存了旧数据。所有与该表相关的查询都要等待该锁。无论此查询是否命中缓存，以及检测缓存是否失效。 如果缓存大，或者碎片很多，那么就会有很大的系统消耗。（设置了很大的查询缓存的时候）
+
+2. **事务对查询缓存的影响**
+
+   对InnoDB用户来说，事务的一些特性会限制查询缓存的使用。当一个语句在事务中修改了某个表，MySQL会将这个表的对应的查询缓存都设置失效，而事实上，InnoDB的多版本特性会暂时将这个修改对其他事务屏蔽。在这个事务提交之前，这个表的相关查询是无法被缓存的，所以所有在这个表上面的查询一内部或外部的事务——都只能在该事务提交后才被缓存。因此，长时间运行的事务，会大大降低查询缓存的命中率。
+
+### 缓存对系统的影响
+
+只有当缓存带来的资源节约大于其本身的资源消耗时才会给系统带来性能提升
+
+![img](https://img-blog.csdnimg.cn/img_convert/026aabbf3a264ac4e8b20c936aa93d94.png)
+
+### 适合做缓存的查询
+
+![img](https://img-blog.csdnimg.cn/79072634bea04255b53290c5e99e4419.png)
+
+- 汇总查询，如 count, max 等
+- 复杂的查询，但结果少。如多表关联后需要分组，排序在分页的查询。同时涉及的表更新操作少于查询操作，防止缓存频发失效
+
+### 命中率的计算
+
+一个判断查询缓存是否有效的直接数据是命中率，就是使用查询缓存返回结果占总查询的比率。当MySQL接收到一个SELECT查询的时候，要么增加Qcache hits的值，要么增加Com select的值。所以查询缓存命中率可以由如下公式计算：Qcache hits / (Qcache hits+Com select)
+
+### 命中率低不代表性能提升少
+
+不过，查询缓存命中率是一个很难判断的数值。命中率多大才是好的命中率？具体情况要具体分析。只要查询缓存带来的效率提升大于查询缓存带来的额外消耗，即使30%命中率对系统性能提升也有很大好处。另外，缓存了哪些查询也很重要，例如，被缓存的查询本身消耗非常巨大，那么即使缓存命中率非常低，也仍然会对系统性能提升有好处。所以，没有一个简单的规则可以判断查询缓存是否对系统有好处。
+
+### 命中和写入的比率
+
+即Qcache hits和Qcache inserts的比值。根据经验来看，当这个比值大于3：1时通常查询缓存是有效的，不过这个比率最好能够达到10：1。如果你的应用没有达到这个比率，那么就可以考虑禁用查询缓存了，除非你能够通过精确的计算得知：命中带来的性能提升大于缓存失效的消耗，并且查询缓存并没有成为系统的瓶颈。
+
+### 缓存失效的一些指标检查
+
+- 更新导致
+  可以通过参数Com*来查看数据修改的情况（包括Com update,Com delete,等等)
+- 缓存空间不足
+  通过Qcache lowmem prunes来查看有多少次失效是由于内存不足导致的.
+  缓存的数据没有被查询
+- 查看Com select和Qcache inserts的相对值。
+  如果每次查询操作都是缓存未命中，然后需要将查询结果放到缓存中，那么Qcache inserts的大小应该和Com select相当。所以在缓存完成预热后，我们总希 望看到Qcache inserts远远小于Com select。不过由于缓存和服务器内部的复杂和多样性，仍然很难说，这个比率是多少才是一个合适的值。
+
+### 缓存空间的设置和使用
+
+1. **并非越大越好**
+
+   每一个应用程序都会有一个“最大缓存空间”，甚至对一些纯读的应用来说也一样。最大缓存空间是能够缓存所有可能查询结果的缓存空间总和。理论上，对多数应用来说， 这个数值都会非常大。而实际上，由于缓存失效的原因，大多数应用最后使用的缓存空间都比预想的要小。即使你配置了足够大的缓存空间，由于不断地失效，导致缓存空间 一直都不会接近“最大缓存空间”
+
+2. **设置一个合理值**
+
+   通常可以通过观察查询缓存内存的实际使用情况，来确定是否需要缩小或者扩大查询缓存。如果查询缓存空间长时间都有剩余，那么建议缩小；如果经常由于空间不足而导致查询缓存失效，那么则需要增大查询缓存。不过需要注意，如果查询缓存达到了几十兆 这样的数量级，是有潜在危险的。（这和硬件以及系统压力大小有关)。
+
+### 查询缓存的一些配置参数
+
+由于查询缓存这种鸡肋的特性，MySQL 提供一中按照需求决定是否使用 查询缓存，将决定权交给了用户:
+配置文件 my.cnf
+query_cache_type有3个值 0代表关闭查询缓存OFF，1代表开启ON，2（DEMAND）代表当sql语句中有SQL_CACHE 关键词时才缓存
+
+1. 查看当前mysql实例是否开启缓存机制
+
+   ```mysql
+   show global variables like "%query_cache_type%";  
+   ```
+
+2. 监控查询缓存的命中率
+
+   ```mysql
+   show status like'%Qcache%'; //查看运行的缓存信息  
+   ```
+
+   ![在这里插入图片描述](https://img-blog.csdnimg.cn/bbde6070163543aa8da129bcd9635b77.png)
+
+   - Qcache_free_blocks:表示查询缓存中目前还有多少剩余的blocks，如果该值显示较大，则说明查询缓存中的内存碎片过多了，可能在一定的时间进行整理。
+   - Qcache_free_memory:查询缓存的内存大小，通过这个参数可以很清晰的知道当前系统的查询内存是否够用，是多了，还是不够用，DBA可以根据实际情况做出调整。
+   - Qcache_hits:表示有多少次命中缓存。我们主要可以通过该值来验证我们的查询缓存的效果。数字越大，缓存效果越理想。
+   - Qcache_inserts: 表示多少次未命中然后插入，意思是新来的SQL请求在缓存中未找到，不得不执行查询处理，执行查询处理后把结果insert到查询缓存中。这样的情况的次数，次数越多，表示查询缓存应用到的比较少，效果也就不理 想。当然系统刚启动后，查询缓存是空的，这很正常。
+   - Qcache_lowmem_prunes:该参数记录有多少条查询因为内存不足而被移除出查询缓存。通过这个值，用户可以适当的调整缓存大小。
+   - Qcache_not_cached: 表示因为query_cache_type的设置而没有被缓存的查询数量。
+   - Qcache_queries_in_cache:当前缓存中缓存的查询数量。
+   - Qcache_total_blocks:当前缓存的block数量
