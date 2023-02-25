@@ -1529,3 +1529,15 @@ query_cache_type有3个值 0代表关闭查询缓存OFF，1代表开启ON，2（
    - Qcache_not_cached: 表示因为query_cache_type的设置而没有被缓存的查询数量。
    - Qcache_queries_in_cache:当前缓存中缓存的查询数量。
    - Qcache_total_blocks:当前缓存的block数量
+
+## 对比truncate和delete
+
+TRUNCATE TABLE 在功能上与不带 WHERE 子句的 DELETE 语句相同：二者均删除表中的全部行。但 TRUNCATE TABLE 比 DELETE 速度快，且使用的系统和事务日志资源少。
+
+DELETE 语句每次删除一行，并在事务日志中为所删除的每行记录一项。TRUNCATE TABLE 通过释放存储表数据所用的数据页来删除数据，并且只在事务日志中记录页的释放。
+
+TRUNCATE TABLE 删除表中的所有行，但表结构及其列、约束、索引等保持不变。新行标识所用的计数值重置为该列的种子。如果想保留标识计数值，请改用 DELETE。如果要删除表定义及其数据，请使用 DROP TABLE 语句。
+
+对于由 FOREIGN KEY 约束引用的表，不能使用 TRUNCATE TABLE，而应使用不带 WHERE 子句的 DELETE 语句。由于 TRUNCATE TABLE 不记录在日志中，所以它不能激活触发器。
+
+TRUNCATE TABLE 不能用于参与了索引视图的表。
