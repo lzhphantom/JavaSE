@@ -1,4 +1,4 @@
-package sg.com.ncs.luozhihui.design.template;
+package com.lzhphantom.design.template;
 
 /**
  * @author luozhihui

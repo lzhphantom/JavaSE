@@ -1,4 +1,4 @@
-package sg.com.ncs.luozhihui.design.strategy;
+package com.lzhphantom.design.strategy;
 
 import java.util.Scanner;
 
