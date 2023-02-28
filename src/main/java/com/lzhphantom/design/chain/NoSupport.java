@@ -1,7 +1,7 @@
-package sg.com.ncs.luozhihui.chain;
+package com.lzhphantom.design.chain;
 
 /**
- * @author luozhihui
+ * @author lzhphantom
  * @create 2/28/2023
  */
 public class NoSupport extends Support {

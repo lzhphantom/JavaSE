@@ -1,9 +1,9 @@
-package sg.com.ncs.luozhihui.design.visitor;
+package com.lzhphantom.design.visitor;
 
 import java.util.Iterator;
 
 /**
- * @author luozhihui
+ * @author lzhphantom
  * @create 2/27/2023
  */
 public class Client {

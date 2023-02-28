@@ -1,10 +1,10 @@
-package sg.com.ncs.luozhihui.iterator;
+package com.lzhphantom.design.iterator;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
 /**
- * @author luozhihui
+ * @author lzhphantom
  * @create 2/28/2023
  */
 @Data

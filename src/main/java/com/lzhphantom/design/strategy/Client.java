@@ -3,7 +3,7 @@ package com.lzhphantom.design.strategy;
 import java.util.Scanner;
 
 /**
- * @author luozhihui
+ * @author lzhphantom
  * @create 2/24/2023
  */
 public class Client {

@@ -1,10 +1,10 @@
-package sg.com.ncs.luozhihui.chain;
+package com.lzhphantom.design.chain;
 
 import lombok.Getter;
 import lombok.ToString;
 
 /**
- * @author luozhihui
+ * @author lzhphantom
  * @create 2/28/2023
  */
 @Getter

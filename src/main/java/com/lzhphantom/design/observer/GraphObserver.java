@@ -1,10 +1,10 @@
-package sg.com.ncs.luozhihui.design.observer;
+package com.lzhphantom.design.observer;
 
 import java.util.Observable;
 import java.util.Observer;
 
 /**
- * @author luozhihui
+ * @author lzhphantom
  * @create 2/27/2023
  */
 public class GraphObserver implements Observer {

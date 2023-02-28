@@ -1,11 +1,11 @@
-package sg.com.ncs.luozhihui.design.state;
+package com.lzhphantom.design.state;
 
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
 /**
- * @author luozhihui
+ * @author lzhphantom
  * @create 2/28/2023
  */
 public class SafeFrame extends Frame implements Context, ActionListener {

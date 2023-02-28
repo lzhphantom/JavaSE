@@ -1,7 +1,7 @@
-package sg.com.ncs.luozhihui.design.facade;
+package com.lzhphantom.design.facade;
 
 /**
- * @author luozhihui
+ * @author lzhphantom
  * @create 2/27/2023
  */
 public class SubSystemA {

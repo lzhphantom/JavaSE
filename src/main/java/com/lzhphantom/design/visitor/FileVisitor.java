@@ -1,4 +1,4 @@
-package sg.com.ncs.luozhihui.design.visitor;
+package com.lzhphantom.design.visitor;
 
 import com.google.common.collect.Lists;
 
@@ -6,7 +6,7 @@ import java.util.Iterator;
 import java.util.List;
 
 /**
- * @author luozhihui
+ * @author lzhphantom
  * @create 2/27/2023
  */
 public class FileVisitor extends Visitor {

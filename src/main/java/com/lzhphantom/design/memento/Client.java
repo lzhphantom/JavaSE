@@ -1,10 +1,10 @@
-package sg.com.ncs.luozhihui.design.memento;
+package com.lzhphantom.design.memento;
 
 import java.io.*;
 import java.nio.file.Files;
 
 /**
- * @author luozhihui
+ * @author lzhphantom
  * @create 2/28/2023
  */
 public class Client {

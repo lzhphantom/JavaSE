@@ -1,11 +1,11 @@
-package sg.com.ncs.luozhihui.design.mediator;
+package com.lzhphantom.design.mediator;
 
 import java.awt.*;
 import java.awt.event.TextEvent;
 import java.awt.event.TextListener;
 
 /**
- * @author luozhihui
+ * @author lzhphantom
  * @create 2/27/2023
  */
 public class ColleagueTextField extends TextField implements TextListener, Colleague {

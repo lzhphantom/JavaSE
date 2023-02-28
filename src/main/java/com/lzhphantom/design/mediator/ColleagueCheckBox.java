@@ -1,11 +1,11 @@
-package sg.com.ncs.luozhihui.design.mediator;
+package com.lzhphantom.design.mediator;
 
 import java.awt.*;
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
 
 /**
- * @author luozhihui
+ * @author lzhphantom
  * @create 2/27/2023
  */
 public class ColleagueCheckBox extends Checkbox implements ItemListener, Colleague {

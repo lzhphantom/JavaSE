@@ -1,7 +1,7 @@
-package sg.com.ncs.luozhihui.design.bridging;
+package com.lzhphantom.design.bridging;
 
 /**
- * @author luozhihui
+ * @author lzhphantom
  * @create 2/24/2023
  */
 public class Client {

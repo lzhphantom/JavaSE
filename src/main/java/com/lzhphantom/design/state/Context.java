@@ -1,7 +1,7 @@
-package sg.com.ncs.luozhihui.design.state;
+package com.lzhphantom.design.state;
 
 /**
- * @author luozhihui
+ * @author lzhphantom
  * @create 2/28/2023
  */
 public interface Context {

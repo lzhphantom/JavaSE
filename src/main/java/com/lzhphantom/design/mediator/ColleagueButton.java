@@ -1,9 +1,9 @@
-package sg.com.ncs.luozhihui.design.mediator;
+package com.lzhphantom.design.mediator;
 
 import java.awt.*;
 
 /**
- * @author luozhihui
+ * @author lzhphantom
  * @create 2/27/2023
  */
 public class ColleagueButton extends Button implements Colleague {

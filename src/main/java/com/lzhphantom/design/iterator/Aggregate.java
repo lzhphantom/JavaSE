@@ -1,7 +1,7 @@
-package sg.com.ncs.luozhihui.iterator;
+package com.lzhphantom.design.iterator;
 
 /**
- * @author luozhihui
+ * @author lzhphantom
  * @create 2/28/2023
  */
 public interface Aggregate {

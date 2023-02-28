@@ -1,7 +1,7 @@
-package sg.com.ncs.luozhihui.design.command;
+package com.lzhphantom.design.command;
 
 /**
- * @author luozhihui
+ * @author lzhphantom
  * @create 2/27/2023
  */
 public class TVReceiver {
