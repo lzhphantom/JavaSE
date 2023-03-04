@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  zk1:
+    image: zookeeper
+    restart: always
+    hostname: zk1
+    container_name: zk1
+    ports:
+      - 2181:2181
+    volumes:
+      - D:/ProgramData/DockerDesktop/docker/zookeeper/zk1/data:/data
+      - D:/ProgramData/DockerDesktop/docker/zookeeper/zk1/datalog:/datalog
+    environment:
+      ZOO_MY_ID: 1
+      ZOO_SERVERS: server.1=zk1:2888:3888 server.2=zk2:2888:3888 server.3=zk3:2888:3888
+    networks:
+      - mynet
+
+  zk2:
+    image: zookeeper
+    restart: always
+    hostname: zk2
+    container_name: zk2
+    ports:
+      - 2182:2181
+    volumes:
+      - D:/ProgramData/DockerDesktop/docker/zookeeper/zk2/data:/data
+      - D:/ProgramData/DockerDesktop/docker/zookeeper/zk2/datalog:/datalog
+    environment:
+      ZOO_MY_ID: 2
+      ZOO_SERVERS: server.1=zk1:2888:3888 server.2=zk2:2888:3888 server.3=zk3:2888:3888
+    networks:
+      - mynet
+
+  zk3:
+    image: zookeeper
+    restart: always
+    hostname: zk3
+    container_name: zk3
+    ports:
+      - 2183:2181
+    volumes:
+      - D:/ProgramData/DockerDesktop/docker/zookeeper/zk3/data:/data
+      - D:/ProgramData/DockerDesktop/docker/zookeeper/zk3/datalog:/datalog
+    environment:
+      ZOO_MY_ID: 3
+      ZOO_SERVERS: server.1=zk1:2888:3888 server.2=zk2:2888:3888 server.3=zk3:2888:3888
+    networks:
+      - mynet
+
+  zkui:
+    image: maauso/zkui
+    restart: always
+    hostname: zkui
+    container_name: zkui
+    ports:
+      - 9090:9090
+    environment:
+      ZKLIST: zk1:2181,zk2:2182,zk3:2183
+    networks:
+      - mynet
+
+networks:
+  mynet:
+    driver: bridge
